@@ -1,0 +1,37 @@
+version: "3.9"
+
+x-base_service: &base_service
+  environment:
+    - "DOCKER_USER=$USER"
+  user: "${UID_GID}"
+  volumes:
+    # Good default dotfiles
+    - "./dotfiles/bashrc:/home/coder/.bashrc"
+    - "./dotfiles/inputrc:/home/coder/.inputrc"
+  stop_signal: SIGINT
+  deploy:
+    resources:
+      reservations:
+        devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+services:
+  code-server:
+    <<: *base_service
+    profiles: ["code-server"]
+    container_name: my-code-server
+    build: ./base
+    network_mode: "host"
+      #ports:
+      #- "8080:8080"
+    volumes:
+      # Map the cache & config to service folder
+      - "./code-server/cache:/home/coder/.vscode-server"
+      - "./code-server/config:/home/coder/.config/code-server"
+      - "./code-server/share:/home/coder/.local/share/code-server"
+      # Mapping $PWD. May replace it with your project dir
+      - "$PWD:/home/coder/project"
+    restart: always
+    command: /usr/bin/dumb-init /usr/bin/code-server --bind-addr=0.0.0.0:8080 . 
